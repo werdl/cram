@@ -90,7 +90,7 @@ fn probable_compression(contents: &[u8]) -> Compression {
     } else if contents.starts_with(&[0x42, 0x5a, 0x68]) {
         Compression::Bzip2
     } else {
-        Compression::Brotli // probably 
+        Compression::Brotli // probably (if it isn't compressed, it is dealt with in the unbrotli function)
     }
 }
 

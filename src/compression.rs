@@ -70,7 +70,14 @@ impl Decompress for Vec<u8> {
         let mut decoder = brotli::Decompressor::new(self.as_slice(), 4096);
 
         let mut data = Vec::new();
-        decoder.read_to_end(&mut data).unwrap();
+        
+        match decoder.read_to_end(&mut data) {
+            Ok(_) => {},
+            Err(_) => {
+                // brotli is the default: thus if we don't decompress, we assume it's not compressed - return the original data
+                data = self.clone();
+            }
+        }
 
         data
     }

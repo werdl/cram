@@ -1,1 +1,7 @@
 /target
+*.cram
+files/mintext
+files/os
+files/xz
+*.tar
+# RANDOM files not excluded, as they must remain the same for the sake of reproducibility
