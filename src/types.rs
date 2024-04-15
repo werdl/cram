@@ -23,6 +23,8 @@ pub enum Entry {
     Directory(Directory),
 }
 
+
+
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
@@ -98,5 +100,17 @@ impl Parse for Directory {
             updated_at: metadata.modified()?.duration_since(std::time::SystemTime::UNIX_EPOCH)?.as_secs(),
             contents, 
         }))
+    }
+}
+
+impl Parse for Entry {
+    fn open(name: String) -> Result<Entry, Error> {
+        let metadata = std::fs::metadata(name.clone())?;
+
+        if metadata.is_dir() {
+            Directory::open(name)
+        } else {
+            File::open(name)
+        }
     }
 }
