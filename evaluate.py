@@ -87,4 +87,4 @@ for file in FILES:
 
     ax.legend()
 
-    plt.savefig(f"benchmark_{file}.png")
+    plt.savefig(f"benchmark/{file}.png")
