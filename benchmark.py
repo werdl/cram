@@ -48,14 +48,16 @@ def benchmark(command: str) -> tuple[float, int]: # (time, size)
 
     return statistics.fmean(times)
 
+EXECUTABLES = {
+    "gzip": "gzip",
+    "bzip2": "bzip2",
+    "lzma": "xz",
+    "zstd": "zstd",
+    "brotli": "brotli"
+}
+
 def tar(algorithm: str, file: str) -> tuple[float, int]:
-    EXECUTABLES = {
-        "gzip": "gzip",
-        "bzip2": "bzip2",
-        "lzma": "xz",
-        "zstd": "zstd",
-        "brotli": "brotli"
-    }
+
 
     # first, tar the file
     command_tar = f"tar -cf files/{file}.tar files/{file}"
@@ -67,8 +69,9 @@ def tar(algorithm: str, file: str) -> tuple[float, int]:
     return benchmark(f"{command_tar} && {command_comp} && rm files/{file}.tar*")
 
 def cram(algorithm: str, file: str) -> tuple[float, int]:
-    command_cram = f"target/debug/cram pack -c {algorithm} files/{file}"
-    return benchmark(command_cram)
+    command_cram = f"target/debug/cram pack files/{file}"
+    command_comp = f"{EXECUTABLES[algorithm]} files/{file}.cram"
+    return benchmark(f"{command_cram} && {command_comp} && rm files/{file}.cram*")
 
 ALGORITHMS = ["gzip", "bzip2", "lzma", "zstd"]
 FILES = ["1KB_RANDOM", "1MB_RANDOM", "10MB_RANDOM", "mintext", "os", "xz"]
