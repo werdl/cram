@@ -5,8 +5,6 @@ mod compression;
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-
     use crate::types::{Entry, Parse};
     use crate::packer::Serialize;
     use crate::unpacker::Deserialize;
@@ -39,10 +37,7 @@ mod tests {
 
 use std::io::Write;
 
-use clap::{
-    Subcommand,
-    Parser
-};
+use clap::Parser;
 
 #[derive(Parser)]
 struct Opts {
@@ -89,7 +84,7 @@ fn probable_compression(contents: &[u8]) -> Compression {
         Compression::Zstd
     } else if contents.starts_with(&[0x42, 0x5a, 0x68]) {
         Compression::Bzip2
-    } else {
+    } else { // ideally we would search for a magic number, but I couldn't find one for brotli (PRs welcome!)
         Compression::Brotli // probably (if it isn't compressed, it is dealt with in the unbrotli function)
     }
 }

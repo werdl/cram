@@ -1,6 +1,6 @@
 //! unpacker - unpack a .cram file into an `Entry`
 
-use crate::types::{Directory, Entry, File};
+use crate::types::{Entry, File};
 
 pub trait Deserialize 
 where Self: Sized {
