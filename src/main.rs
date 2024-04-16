@@ -43,28 +43,43 @@ use clap::Parser;
 struct Opts {
     #[clap(subcommand)]
     subcmd: SubCommand,
+
+    /// print more information
+    #[clap(short, long)]
+    verbose: bool,
 }
 
 #[derive(Parser)]
 enum SubCommand {
+    /// archive and optionally compress a file or directory
     Pack(Pack),
+
+    /// extract a .cram file
     Unpack(Unpack),
 }
 
 #[derive(Parser)]
 struct Pack {
+     /// the file or directory to pack
     input: String,
+
+     /// defaults to <input>.cram
     #[clap(short, long)]
     output: Option<String>,
+
+    /// compression algorithm to use
     #[clap(short, long)]
     compression: Option<String>,
 }
 
 #[derive(Parser)]
 struct Unpack {
-    input: String,
+    /// the .cram file to unpack
+    input: String, 
+
+    /// the directory to unpack to
     #[clap(short, long, default_value = ".")]
-    output: String,
+    output: String, 
 }
 
 enum Compression {
@@ -118,15 +133,22 @@ fn main() {
                         },
                     }
                 }
-                None => data,
+                None => data.clone(),
             };
+
+            if opts.verbose {
+                println!("Original size: {} bytes", data.len());
+                println!("Compressed size: {} bytes", compressed.len());
+            }
 
             let output = match pack.output {
                 Some(output) => output,
                 None => format!("{}.cram", pack.input),
             };
 
-            std::fs::write(output, compressed).unwrap();
+            std::fs::write(output.clone(), compressed).unwrap();
+
+            println!("Wrote to {}", output);
         }
         SubCommand::Unpack(unpack) => {
             let data = std::fs::read(unpack.input).unwrap();
