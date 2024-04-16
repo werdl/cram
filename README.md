@@ -3,6 +3,8 @@
 ## Benchmarking
 Full details can be found in [`benchmark.json`](benchmark.json).
 
+Benchmarks are computed using the `cram` and `tar` binaries, unoptimized. The same compression binaries are used for both, to ensure a fair comparison (the Rust libraries are significantly less effiecient).
+
 But here are some summary graphs:
 
 ![1KB random file](benchmark/1KB_RANDOM.png)
