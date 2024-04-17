@@ -1,15 +1,15 @@
 use std::{io::Read, time::SystemTimeError};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct File {
-    pub name: String, // File name - must be padded to 100 characters with null bytes
-    pub size: u64, // File size in bytes
+    pub name: String,    // File name - must be padded to 100 characters with null bytes
+    pub size: u64,       // File size in bytes
     pub created_at: u64, // Unix timestamp of file creation
     pub updated_at: u64, // Unix timestamp of last file update
     pub contents: Vec<u8>, // File contents
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Directory {
     pub name: String, // Directory name - must be padded to 100 characters with null bytes
     pub created_at: u64, // Unix timestamp of directory creation
@@ -17,13 +17,11 @@ pub struct Directory {
     pub contents: Vec<Entry>, // Files and directories contained within this directory
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Entry {
     File(File),
     Directory(Directory),
 }
-
-
 
 #[derive(Debug)]
 pub enum Error {
@@ -46,14 +44,15 @@ impl From<SystemTimeError> for Error {
     }
 }
 
-
-pub trait Parse 
-where Self: Sized {
-    fn open(name: String) -> Result<Entry, Error>;
+pub trait Parse
+where
+    Self: Sized,
+{
+    fn open(name: String, exclude_dirs: Vec<String>) -> Result<Entry, Error>;
 }
 
 impl Parse for File {
-    fn open(name: String) -> Result<Entry, Error> {
+    fn open(name: String, _exclude_dirs: Vec<String>) -> Result<Entry, Error> {
         // open the file at the given path
         // read the file contents
 
@@ -62,21 +61,27 @@ impl Parse for File {
         let metadata = fp.metadata()?;
 
         let mut contents = Vec::new();
-        
+
         fp.read_to_end(&mut contents)?;
 
         Ok(Entry::File(File {
             name,
             size: metadata.len(),
-            created_at: metadata.created()?.duration_since(std::time::SystemTime::UNIX_EPOCH)?.as_secs(),
-            updated_at: metadata.modified()?.duration_since(std::time::SystemTime::UNIX_EPOCH)?.as_secs(),
+            created_at: metadata
+                .created()?
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                .as_secs(),
+            updated_at: metadata
+                .modified()?
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                .as_secs(),
             contents,
         }))
     }
 }
 
 impl Parse for Directory {
-    fn open(name: String) -> Result<Entry, Error> {
+    fn open(name: String, exclude_dirs: Vec<String>) -> Result<Entry, Error> {
         // open the directory at the given path
         // read the directory contents
 
@@ -88,29 +93,44 @@ impl Parse for Directory {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                contents.push(Directory::open(path.to_str().unwrap().to_string())?);
+                if exclude_dirs.contains(&path.to_str().unwrap().trim_start_matches("./").to_string()) {
+                    println!("Skipping directory: {}", path.to_str().unwrap().trim_start_matches("./"));
+                    continue;
+                } else {
+                    contents.push(Directory::open(path.to_str().unwrap().to_string(), exclude_dirs.clone())?);
+                }
+
             } else {
-                contents.push(File::open(path.to_str().unwrap().to_string())?);
+                contents.push(File::open(path.to_str().unwrap().to_string(), exclude_dirs.clone())?);
             }
         }
 
+        
+
         Ok(Entry::Directory(Directory {
             name,
-            created_at: metadata.created()?.duration_since(std::time::SystemTime::UNIX_EPOCH)?.as_secs(),
-            updated_at: metadata.modified()?.duration_since(std::time::SystemTime::UNIX_EPOCH)?.as_secs(),
-            contents, 
+            created_at: metadata
+                .created()?
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                .as_secs(),
+            updated_at: metadata
+                .modified()?
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+                .as_secs(),
+            contents,
         }))
     }
 }
 
 impl Parse for Entry {
-    fn open(name: String) -> Result<Entry, Error> {
+    fn open(name: String, exclude_dirs: Vec<String>) -> Result<Entry, Error> {
         let metadata = std::fs::metadata(name.clone())?;
 
         if metadata.is_dir() {
-            Directory::open(name)
+            Directory::open(name, exclude_dirs)
         } else {
-            File::open(name)
+            File::open(name, exclude_dirs)
         }
     }
 }
+

@@ -1,39 +1,7 @@
-mod types;
-mod packer;
-mod unpacker;
 mod compression;
-
-#[cfg(test)]
-mod tests {
-    use crate::types::{Entry, Parse};
-    use crate::packer::Serialize;
-    use crate::unpacker::Deserialize;
-
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let a = types::Directory::open("src".to_string()).unwrap();
-
-        let b = a.serialize();
-
-        
-        // print contents of first file
-        let d = <Vec<Entry>>::deserialize(&b);
-
-        // for each entry, print the name, modified time, created time, and size
-        for entry in d {
-            match entry {
-                Entry::File(file) => {
-                    println!("File: {} - Modified: {} - Created: {} - Size: {}", file.name, file.updated_at, file.created_at, file.size);
-                }
-                Entry::Directory(dir) => {
-                    println!("Directory: {} - Modified: {} - Created: {}", dir.name, dir.updated_at, dir.created_at);
-                }
-            }
-        }
-    }
-}
+mod packer;
+mod types;
+mod unpacker;
 
 use std::io::Write;
 
@@ -60,26 +28,30 @@ enum SubCommand {
 
 #[derive(Parser)]
 struct Pack {
-     /// the file or directory to pack
+    /// the file or directory to pack
     input: String,
 
-     /// defaults to <input>.cram
+    /// defaults to <input>.cram
     #[clap(short, long)]
     output: Option<String>,
 
     /// compression algorithm to use
     #[clap(short, long)]
     compression: Option<String>,
+
+    /// directories to exclude
+    #[clap(short, long, value_delimiter = ' ', num_args = 1..)]
+    exclude: Vec<String>,
 }
 
 #[derive(Parser)]
 struct Unpack {
     /// the .cram file to unpack
-    input: String, 
+    input: String,
 
     /// the directory to unpack to
     #[clap(short, long, default_value = ".")]
-    output: String, 
+    output: String,
 }
 
 enum Compression {
@@ -99,14 +71,13 @@ fn probable_compression(contents: &[u8]) -> Compression {
         Compression::Zstd
     } else if contents.starts_with(&[0x42, 0x5a, 0x68]) {
         Compression::Bzip2
-    } else { // ideally we would search for a magic number, but I couldn't find one for brotli (PRs welcome!)
+    } else {
+        // ideally we would search for a magic number, but I couldn't find one for brotli (PRs welcome!)
         Compression::Brotli // probably (if it isn't compressed, it is dealt with in the unbrotli function)
     }
 }
 
-use compression::{
-    Compress, Decompress
-};
+use compression::{Compress, Decompress};
 use packer::Serialize;
 use types::Parse;
 use unpacker::Deserialize;
@@ -116,23 +87,22 @@ fn main() {
 
     match opts.subcmd {
         SubCommand::Pack(pack) => {
-            let entry = types::Entry::open(pack.input.clone()).unwrap();
+            let entry = types::Entry::open(pack.input.clone(), pack.exclude).unwrap();
+
             let data = entry.serialize();
 
             let compressed = match pack.compression {
-                Some(compression) => {
-                    match compression.as_str() {
-                        "gzip" => data.gzip(),
-                        "lzma" => data.lzma(),
-                        "zstd" => data.zstd(),
-                        "brotli" => data.brotli(),
-                        "bzip2" => data.bzip2(),
-                        _ => {
-                            println!("Unknown compression type, defaulting to gzip");
-                            data.gzip()
-                        },
+                Some(compression) => match compression.as_str() {
+                    "gzip" => data.gzip(),
+                    "lzma" => data.lzma(),
+                    "zstd" => data.zstd(),
+                    "brotli" => data.brotli(),
+                    "bzip2" => data.bzip2(),
+                    _ => {
+                        println!("Unknown compression type, defaulting to gzip");
+                        data.gzip()
                     }
-                }
+                },
                 None => data.clone(),
             };
 
@@ -169,14 +139,12 @@ fn main() {
                     types::Entry::File(file) => {
                         let path = std::path::Path::new(&unpack.output).join(&file.name);
 
-
                         // ensure the parent directory exists
                         let parent = path.parent().unwrap();
 
                         if !parent.exists() {
                             std::fs::create_dir_all(parent).unwrap();
                         }
-
 
                         let mut fp = std::fs::File::create(path).unwrap();
                         fp.write_all(&file.contents).unwrap();
