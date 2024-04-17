@@ -29,6 +29,7 @@ enum SubCommand {
 #[derive(Parser)]
 struct Pack {
     /// the file or directory to pack
+    #[clap(value_name = "input")]
     input: String,
 
     /// defaults to <input>.cram
@@ -47,7 +48,7 @@ struct Pack {
 #[derive(Parser)]
 struct Unpack {
     /// the .cram file to unpack
-    input: String,
+    input: Option<String>,
 
     /// the directory to unpack to
     #[clap(short, long, default_value = ".")]
@@ -121,7 +122,8 @@ fn main() {
             println!("Wrote to {}", output);
         }
         SubCommand::Unpack(unpack) => {
-            let data = std::fs::read(unpack.input).unwrap();
+
+            let data = std::fs::read(unpack.input.unwrap_or("/dev/stdin".to_string())).unwrap();
             let compression = probable_compression(&data);
 
             let decompressed = match compression {
